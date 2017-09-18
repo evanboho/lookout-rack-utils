@@ -5,37 +5,38 @@ require 'configatron'
 
 describe Lookout::Rack::Utils::Log do
   subject(:log) { described_class.instance }
-  subject(:log_message) { 'foo' }
+  let(:log_message) { 'foo' }
   let(:filename) { "log" }
+  let(:exclude_levels) { [] }
 
   before :each do
     configatron.logging.enabled = true
-    allow(configatron.logging).to receive(:file).and_return(filename)
+    configatron.logging.file = filename
+    configatron.statsd.exclude_levels = exclude_levels
   end
 
   describe '.debug' do
     context 'if debug is in configatron.statsd.exclude_levels' do
-      before { configatron.statsd.exclude_levels = [:debug] }
-      after { configatron.statsd.exclude_levels = [] }
+      let(:exclude_levels) { [:debug] }
 
       it 'should not log a graphite stat' do
-        Lookout::Rack::Utils::Graphite.should_not_receive(:increment).with('log.debug')
+        expect(Lookout::Rack::Utils::Graphite).not_to receive(:increment).with('log.debug')
         log.debug log_message
       end
     end
 
     it 'should log a graphite stat' do
-      Lookout::Rack::Utils::Graphite.should_receive(:increment).with('log.debug')
+      expect(Lookout::Rack::Utils::Graphite).to receive(:increment).with('log.debug')
       log.debug log_message
     end
   end
 
   [:debug, :info, :warn, :error, :fatal].each do |method|
     describe ".#{method}" do
-      it 'should log a graphite stat' do
-        Lookout::Rack::Utils::Graphite.should_receive(:increment).with("log.#{method}")
+      before { expect(log.instance_variable_get(:@logger)).to receive(method).with(log_message).and_call_original }
 
-        log.instance_variable_get(:@logger).should_receive(method).with(log_message).and_call_original
+      it 'should log a graphite stat' do
+        expect(Lookout::Rack::Utils::Graphite).to receive(:increment).with("log.#{method}")
 
         processed = false
         b = Proc.new { processed = true }
@@ -45,7 +46,6 @@ describe Lookout::Rack::Utils::Log do
       end
 
       it 'should invoke the internal logger object with a given block' do
-        log.instance_variable_get(:@logger).should_receive(method).with(log_message).and_call_original
         processed = false
         b = Proc.new { processed = true }
         log.send(method, log_message, &b)
@@ -53,7 +53,6 @@ describe Lookout::Rack::Utils::Log do
       end
 
       it 'should invoke the internal logger object w/o a given block' do
-        log.instance_variable_get(:@logger).should_receive(method).with(log_message).and_call_original
         log.send(method, log_message)
       end
     end
@@ -92,8 +91,8 @@ describe Lookout::Rack::Utils::Log::LookoutFormatter do
   subject(:formatter) { described_class.new }
   let(:logger) do
     logger = double('Mock Logger')
-    logger.stub(:name).and_return('RSpec Logger')
-    logger.stub(:fullname).and_return('RSpec Logger')
+    expect(logger).to receive(:name).and_return('RSpec Logger')
+    expect(logger).to receive(:fullname).and_return('RSpec Logger')
     logger
   end
   let(:project_name) { 'some_project' }
@@ -113,7 +112,7 @@ describe Lookout::Rack::Utils::Log::LookoutFormatter do
 
 
   before :each do
-    formatter.stub(:basedir).and_return(basedir)
+    allow(formatter).to receive(:basedir).and_return(basedir)
   end
 
 
@@ -121,7 +120,7 @@ describe Lookout::Rack::Utils::Log::LookoutFormatter do
     subject(:filename) { formatter.event_filename(tracer[1]) }
 
     context 'with a normal MRI LogEvent' do
-      it { should eql('spec/log_spec.rb:9') }
+      it { is_expected.to eql('spec/log_spec.rb:9') }
     end
 
     # We have slightly different log formats under packaged .jar files
@@ -129,7 +128,7 @@ describe Lookout::Rack::Utils::Log::LookoutFormatter do
       let(:tracer) { [nil, "backend/metrics.rb:52:in `runloop'"] }
       let(:basedir) { 'file:/home/user/source/projects/stuff.jar!/project' }
 
-      it { should eql('backend/metrics.rb:52') }
+      it { is_expected.to eql('backend/metrics.rb:52') }
     end
   end
 

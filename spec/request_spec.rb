@@ -22,26 +22,26 @@ describe Lookout::Rack::Utils::Request do
 
     before :each do
       helper.request = Object.new
-      helper.request.stub(:env).and_return({'HTTP_CONTENT_ENCODING' => 'gzip'})
-      helper.request.stub(:body).and_return(double)
-      helper.request.body.stub(:rewind).and_return(double)
+      allow(helper.request).to receive(:env).and_return({'HTTP_CONTENT_ENCODING' => 'gzip'})
+      allow(helper.request).to receive(:body).and_return(double)
+      allow(helper.request.body).to receive(:rewind).and_return(double)
     end
 
     it 'should unzip data zipped data properly' do
-      helper.request.body.stub(:read).and_return(zipped_sample_data)
+      expect(helper.request.body).to receive(:read).and_return(zipped_sample_data)
       expect(helper.gunzipped_body).to eq(sample_data)
     end
 
     it 'should do nothing if encoding is not set' do
-      helper.request.stub(:env).and_return({})
-      helper.request.body.stub(:read).and_return(zipped_sample_data)
+      expect(helper.request).to receive(:env).and_return({})
+      expect(helper.request.body).to receive(:read).and_return(zipped_sample_data)
       expect(helper.gunzipped_body).to eq(zipped_sample_data)
     end
 
     it 'should halt and throw and 400 when we have badly encoded data' do
       allow(Lookout::Rack::Utils::Log).to receive(:instance).and_return(log_instance)
       expect(log_instance).to receive(:warn)
-      helper.request.body.stub(:read).and_return(sample_data)
+      expect(helper.request.body).to receive(:read).and_return(sample_data)
       expect(helper).to receive(:halt).with(400, "{}")
       helper.gunzipped_body
     end

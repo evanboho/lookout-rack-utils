@@ -93,7 +93,7 @@ describe Lookout::Rack::Utils::Subroute, :type => :route do
         subject(:subrouted) { subroute!('/test_delete_invalid', :request_path => 'DELATE') }
 
         it 'should throw an error' do
-          expect { subrouted }.to raise_error
+          expect { subrouted }.to raise_error NoMethodError
         end
       end
 

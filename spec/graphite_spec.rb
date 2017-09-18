@@ -5,8 +5,14 @@ describe Lookout::Rack::Utils::Graphite do
   let(:statsd_instance) { nil }
   subject(:graphite) { described_class }
 
+  around :each do |example|
+    configatron.temp do
+      configatron.statsd.prefix = 'test'
+      example.run
+    end
+  end
+
   before :each do
-    configatron.statsd.stub(:prefix).and_return('test')
     Lookout::Statsd.clear_instance
     described_class.clear_instance
     Lookout::Statsd.set_instance(statsd_instance)
@@ -28,21 +34,21 @@ describe Lookout::Rack::Utils::Graphite do
     end
 
     it 'should delegate to statsd' do
-      Lookout::Statsd.instance.should_receive(:increment).once.with('device.associated')
+      expect_any_instance_of(Lookout::StatsdClient).to receive(:increment).once.with('device.associated')
       Lookout::Rack::Utils::Graphite.increment('device.associated')
     end
 
     describe '#time' do
       it 'should delegate the block to statsd' do
         expect { |block|
-          Lookout::Statsd.instance.should_receive(:time).once.with('device.became_aware', &block)
+          expect_any_instance_of(Lookout::StatsdClient).to receive(:time).once.with('device.became_aware', &block)
           Lookout::Rack::Utils::Graphite.time('device.became_aware', &block)
         }.to yield_control
       end
 
       it 'should delegate the sample rate and block to statsd' do
         expect { |block|
-          Lookout::Statsd.instance.should_receive(:time).once.with('device.became_aware', 0.05, &block)
+          expect_any_instance_of(Lookout::StatsdClient).to receive(:time).once.with('device.became_aware', 0.05, &block)
           Lookout::Rack::Utils::Graphite.time('device.became_aware', 0.05, &block)
         }.to yield_control
       end

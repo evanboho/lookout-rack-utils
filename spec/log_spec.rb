@@ -9,10 +9,13 @@ describe Lookout::Rack::Utils::Log do
   let(:filename) { "log" }
   let(:exclude_levels) { [] }
 
-  before :each do
-    configatron.logging.enabled = true
-    configatron.logging.file = filename
-    configatron.statsd.exclude_levels = exclude_levels
+  around :each do |example|
+    configatron.temp do
+      configatron.logging.enabled = true
+      configatron.logging.file = filename
+      configatron.statsd.exclude_levels = exclude_levels
+      example.run
+    end
   end
 
   describe '.debug' do

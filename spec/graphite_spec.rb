@@ -5,8 +5,14 @@ describe Lookout::Rack::Utils::Graphite do
   let(:statsd_instance) { nil }
   subject(:graphite) { described_class }
 
+  around :each do |example|
+    configatron.temp do
+      configatron.statsd.prefix = 'test'
+      example.run
+    end
+  end
+
   before :each do
-    configatron.statsd.prefix = 'test'
     Lookout::Statsd.clear_instance
     described_class.clear_instance
     Lookout::Statsd.set_instance(statsd_instance)
